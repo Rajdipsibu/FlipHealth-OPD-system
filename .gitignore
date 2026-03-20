@@ -1,0 +1,4 @@
+.env
+.sequelizerc
+node_modules/
+src/config/env.ts

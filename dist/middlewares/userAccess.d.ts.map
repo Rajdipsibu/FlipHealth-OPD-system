@@ -1,0 +1,1 @@
+{"version":3,"file":"userAccess.d.ts","sourceRoot":"","sources":["../../src/middlewares/userAccess.ts"],"names":[],"mappings":"AAAA,OAAO,KAAI,EAAE,OAAO,EAAE,QAAQ,EAAE,YAAY,EAAE,MAAM,SAAS,CAAC;AAE9D,eAAO,MAAM,UAAU,GAAI,YAAW,MAAM,EAAC,YAAW,MAAM,MACpD,KAAI,OAAO,EAAC,KAAI,QAAQ,EAAC,MAAK,YAAY,8CA6BnD,CAAA"}
