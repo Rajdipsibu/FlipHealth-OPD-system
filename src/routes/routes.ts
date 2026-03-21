@@ -1,67 +1,73 @@
 import express from "express";
-import { login, regisgter } from "../controllers/auth.controller.js";
+import { forgotPassword, login, logout, refreshToken, regisgter, resetPassword } from "../controllers/auth.controller.js";
 import { userPolicy } from "../middlewares/userPolicy.js";
 import { userAccess } from "../middlewares/userAccess.js";
+import { createUser, deleteUser, getListUser, getUserById, updateUser, updateUserType } from "../controllers/user.controller.js";
+import { createModules, deleteModule, getListModules, updateModule } from "../controllers/modules.controller.js";
+import { createModuleAction, deleteModuleAction, getModuleActions } from "../controllers/module-action.controller.js";
+import { createRolePermission, deleteRolePermission, getRolePermissions } from "../controllers/permission-role.controller.js";
+import { assignUserRole, getUserRoles, removeUserRole } from "../controllers/user-role.controller.js";
+import { createRole, deleteRole, getRoles, updateRole } from "../controllers/role.controller.js";
+import { createAction, deleteAction, getActions, updateAction } from "../controllers/action.controller.js";
 
 const router = express.Router();
 
 //auth
 router.post('/auth/register',regisgter);
 router.post('/auth/login',login)
-/*
-router.post('/auth/logout')
-router.post('/auth/refresh-token')
-router.post('/auth/verify-otp')
-router.post('/auth/forgot-password')
-router.post('/auth/reset-password')
-*/
+router.post('/auth/logout',userPolicy,logout)
+router.post('/auth/refresh-token',refreshToken)
+router.post('/auth/forgot-password',forgotPassword)
+router.post('/auth/reset-password',resetPassword)
 
 //user
-// router.get('/users/reset-password') //list users
-// router.get('/users/:id') //get user
-// router.post('/users') //create user
-// router.put('/users/:id',) //update user
-/*
-router.delete('/users/:id') //soft delete
-router.patch('/users/:id/status')//activate/deactivate
+router.get('/users',userPolicy,userAccess("user_management","listview"),getListUser) //list users
+router.get('/users/:id',userPolicy,userAccess("user_management","view"),getUserById) //get user
+router.post('/users',userPolicy,userAccess("user_management","create"),createUser) //create user
+router.patch('/users/:id',userPolicy,userAccess("user_management","update"),updateUserType) //create user
+router.put('/users/:id',userPolicy,userAccess("user_management","update"),updateUser) //update user
+router.delete('/users/:id',userPolicy,userAccess("user_management","delete"),deleteUser) //soft delete
 
 //---------------------PERMISSION (RBAC)----------------------
 
-//role (RBAC)
-router.get('/roles')
-router.post('/roles')   
-router.put('/roles/:id')
-router.delete('/roles/:id')
+//role
+router.get('/roles',userPolicy,userAccess("role_management","listview"),getRoles)
+router.post('/roles',userPolicy,userAccess("role_management","create"),createRole)   
+router.put('/roles/:id',userPolicy,userAccess("role_management","update"),updateRole)
+router.delete('/roles/:id',userPolicy,userAccess("role_management","delete"),deleteRole)
 
 // Modules
-router.get('/modules')
-router.post('/modules')
-router.put('/modules/:id')
-router.delete('/modules/:id')
+router.get('/modules',userPolicy,userAccess("module_management",'listview'),getListModules)
+router.post('/modules',userPolicy,userAccess("module_management","create"), createModules)
+router.put('/modules/:id',userPolicy,userAccess("module_management","update"), updateModule)
+router.delete('/modules/:id',userPolicy,userAccess("module_management","delete"), deleteModule)
 
 // Actions
-router.get('/actions')
-router.post('/actions')
-router.put('/actions/:id')
-router.delete('/actions/:id')
+router.get('/actions',userPolicy,userAccess("action_management",'listview'),getActions)
+router.post('/actions',userPolicy,userAccess("action_management",'create'),createAction)
+router.put('/actions/:id',userPolicy,userAccess("action_management",'update'),updateAction)
+router.delete('/actions/:id',userPolicy,userAccess("action_management",'delete'),deleteAction)
 
 // Module Actions
-router.get('/module-actions')
-router.post('/module-actions')
-router.delete('/module-actions/:id')
+router.get('/module-actions',userPolicy,userAccess("module_action_management","listview"),getModuleActions)
+router.post('/module-actions',userPolicy,userAccess("module_action_management","create"),createModuleAction)
+router.delete('/module-actions/:id',userPolicy,userAccess("module_action_management","delete"),deleteModuleAction)
 
 // Role Permissions
-router.get('/permissions/roles/:roleId')
-router.post('/permissions/roles/:roleId')
-router.delete('/permissions/roles/:id')
+router.get('/permissions/roles/:roleId',userPolicy,userAccess("role_management","view"),getRolePermissions)
+router.post('/permissions/roles/:roleId',userPolicy,userAccess("role_management","create"),createRolePermission)
+router.delete('/permissions/roles/:id',userPolicy,userAccess("role_management","delete"),deleteRolePermission)
+
 
 // USER ROLE ASSIGNMENT
-router.post('/users/:id/roles')//assign role
-router.delete('/users/:id/roles/:roleId') //remove role
-router.get('/users/:id/roles') //get roles
+router.post('/users/:id/roles',userPolicy,userAccess("user_role","create"),assignUserRole)//assign role
+router.delete('/users/:id/roles/:roleId',userPolicy,userAccess("user_role","delete"),removeUserRole) //remove role
+router.get('/users/:id/roles',userPolicy,userAccess("user_role","view"),getUserRoles) //get roles
+
 
 //-------------BUSINESS MODULE ROUTES----------------
 
+/*
 //Doctor (Consultation)
 router.get('/consultations')
 router.post('/consultations')
@@ -91,7 +97,6 @@ router.put('/customer/profile')
 router.get('/pharmacy/profile')
 router.post('/pharmacy/profile')
 router.put('/pharmacy/profile')
-
  */
 
 export default router;

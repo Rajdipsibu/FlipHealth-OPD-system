@@ -6,18 +6,16 @@ export const userAccess = (moduleName:string,actionName:string) => {
       const policies = req.token.policies;
       if(!policies)return res.status(403).json({ message: "No permissions found" });
 
-      //fetch the role :
-      
       //super admin bypass
-      if(req.token?.role === "super_admin"){
+      if(req.token?.type === "super_admin"){
         return next();
       }
 
       //check permission:
-      const allowed = policies.some((policy:any)=>{
+      const allowed = policies.some((p:any)=>{
         return (
-          policy.module === moduleName &&
-          policy.actions.includes(actionName)
+          p.module === moduleName &&
+          p.actions.includes(actionName)
         );
       });
       if(!allowed){
