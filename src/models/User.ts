@@ -1,9 +1,10 @@
 import { DataTypes, Model, type Optional } from "sequelize";
 import sequelize from "../config/database.js";
 
+type UserRole = "super_admin" | "admin" | "customer" | "doctor" | "pharmacy_owner";
 interface UserAttributes {
   id: number;
-  //user_type: string
+  user_type:UserRole;
   name:string;
   email:string;
   password:string;
@@ -13,10 +14,11 @@ interface UserAttributes {
   is_verified?:boolean;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id'>{}
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'user_type'>{}
 
 class User extends Model<UserAttributes,UserCreationAttributes>implements UserAttributes{
   public id!:number;
+  public user_type!: UserRole;
   public name!:string;
   public email!:string;
   public password!:string;
@@ -32,6 +34,11 @@ User.init(
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
+    },
+    user_type:{
+      type: DataTypes.ENUM("super_admin","admin","customer","doctor","pharmacy_owner"),
+      allowNull:false,
+      defaultValue:"customer"
     },
     name:{
       type: DataTypes.STRING,
