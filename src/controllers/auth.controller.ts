@@ -11,6 +11,7 @@ import Action from "../models/Action.js";
 import { Op } from "sequelize";
 import Session from "../models/Session.js";
 import crypto from "crypto";
+import { sendMail } from "../helper/sendmail.js";
 
 export const regisgter = async (req: Request, res: Response) => {
   try {
@@ -144,24 +145,26 @@ export const refreshToken = async (req: Request, res: Response) => {
     const user = await User.findByPk(decoded.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-     // ... Re-run your Policy fetching logic here (from your Login controller) ...
     const policies = await getUserPolicies(user.id); 
 
-    // 4. Generate New Access Token
-    const newAccessToken = jwt.sign(
-      { id: user.id, user_type: user.user_type, policies },
-      env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    const userData = { id: user.id, user_type: user.user_type, policies } ; 
 
-     // 5. Update Database: Replace old access_token with new one
-    await Session.destroy({ where: { user_id: user.id, type: 'access_token' } });
-    await Session.create({
-      user_id: user.id,
-      type: "access_token",
-      token: newAccessToken,
-      expires_at: new Date(Date.now() + 60 * 60 * 1000)
-    });
+    // 4. Generate New Access Token
+    const newAccessToken = jwt.sign( userData, env.JWT_SECRET,  { expiresIn: "1h" } );
+
+    // 5. Update Database: Replace old access_token with new one
+    await Session.update(
+      {
+        token : newAccessToken,
+        expires_at: new Date(Date.now() + 60 * 60 * 1000)
+      },
+      {
+        where:{
+          user_id:user.id,
+          type:"access_token"
+        }
+      }
+    );
 
     return res.status(200).json({ accessToken: newAccessToken });
   }catch (error) {
@@ -244,7 +247,11 @@ export const forgotPassword = async(req: Request, res: Response) => {
     });
 
     //send Email
-    //await sendEmail(user.email, `Your reset link: /reset-password?token=${resetToken}`);
+    await sendMail(
+      email,
+      `reset link`,
+      `<p>Your reset link: /reset-password?token=${resetToken}</p>`
+    )
 
     return res.status(200).json({ message: "Reset link sent to your email.",resetToken });
   }catch (error) {
@@ -274,7 +281,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 
     // 2. Find the user
-    const user = await User.findByPk(session.user_id);
+    const user = await User.findByPk(session.dataValues.user_id);
     if (!user) return res.status(404).json({ message: "User not found!" });
 
     // Hash new password and update user
@@ -291,5 +298,78 @@ export const resetPassword = async (req: Request, res: Response) => {
   }catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export const sendOtp = async(req: Request, res: Response) =>{
+  try{
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+    //user exist !
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ message: "User with this email does not exist" });
+    }
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    //Set Expiry (e.g., 10 minutes from now)
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    // 4. Save to Database
+    // await user.update({
+    //   otp: otp,
+    //   otp_expiry: otpExpiry
+    // });
+    
+    //send mail:
+    await sendMail(email,'LOGIN OTP',`your otp is: ${otp}`);
+
+    return res.status(200).json({ message: "OTP sent successfully to your email!" , OTP:otp });
+  }catch (error: any) {
+    console.error("Send OTP Error:", error.message);
+    return res.status(500).json({ message: "Failed to send OTP" });
+  }
+}
+
+export const verifyOtp = async(req: Request, res: Response) =>{
+  try{
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+    // 1. Find user by email
+    const user = await User.findOne({ where: { email:email } });
+
+    // 2. Check if OTP has expired
+    // Assuming you stored 'otp_expiry' as a Date object in your DB
+    // if (user.otp_expiry && new Date() > user.otp_expiry) {
+    //   return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+    // }
+
+    // 3. Verify OTP (Compare provided OTP with stored OTP)
+    // If you hashed the OTP for security, use bcrypt.compare
+    // const isMatch = otp === user.otp; // Simple comparison if not hashed
+
+    // if (!isMatch) {
+    //   return res.status(400).json({ message: "Invalid OTP code" });
+    // }
+
+    // 4. Update user status
+    // await user.update({
+    //   is_verified: true,
+    //   otp: null,         // Clear OTP after successful use
+    //   otp_expiry: null   // Clear expiry
+    // });
+
+    return res.status(200).json({
+      message: "Account verified successfully!",
+      is_verified: true
+    });
+  }catch (error: any) {
+    console.error("OTP Verification Error:", error.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 }

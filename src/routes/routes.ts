@@ -1,5 +1,5 @@
 import express from "express";
-import { forgotPassword, login, logout, refreshToken, regisgter, resetPassword } from "../controllers/auth.controller.js";
+import { forgotPassword, login, logout, refreshToken, regisgter, resetPassword, sendOtp, verifyOtp } from "../controllers/auth.controller.js";
 import { userPolicy } from "../middlewares/userPolicy.js";
 import { userAccess } from "../middlewares/userAccess.js";
 import { createUser, deleteUser, getListUser, getUserById, updateUser, updateUserType } from "../controllers/user.controller.js";
@@ -19,6 +19,8 @@ router.post('/auth/logout',userPolicy,logout)
 router.post('/auth/refresh-token',refreshToken)
 router.post('/auth/forgot-password',forgotPassword)
 router.post('/auth/reset-password',resetPassword)
+router.post('/auth/verify-otp', verifyOtp);
+router.post('/auth/send-otp', sendOtp);
 
 //user
 router.get('/users',userPolicy,userAccess("user_management","listview"),getListUser) //list users
@@ -60,9 +62,9 @@ router.delete('/permissions/roles/:id',userPolicy,userAccess("role_management","
 
 
 // USER ROLE ASSIGNMENT
-router.post('/users/:id/roles',userPolicy,userAccess("user_role","create"),assignUserRole)//assign role
-router.delete('/users/:id/roles/:roleId',userPolicy,userAccess("user_role","delete"),removeUserRole) //remove role
-router.get('/users/:id/roles',userPolicy,userAccess("user_role","view"),getUserRoles) //get roles
+router.post('/users/:id/roles',userPolicy,userAccess("user_role_management","create"),assignUserRole)//assign role
+router.delete('/users/:id/roles/:roleId',userPolicy,userAccess("user_role_management","delete"),removeUserRole) //remove role
+router.get('/users/:id/roles',userPolicy,userAccess("user_role_management","view"),getUserRoles) //get roles
 
 
 //-------------BUSINESS MODULE ROUTES----------------
