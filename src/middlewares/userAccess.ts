@@ -1,6 +1,6 @@
 import type{ Request, Response, NextFunction } from "express";
 
-export const userAccess = (moduleName:string,actionName:string) => {
+export const userAccess = (moduleCode:string,actionCode:string) => {
   return (req:Request,res:Response,next:NextFunction)=>{
     try{
       const policies = req.token.policies;
@@ -11,18 +11,13 @@ export const userAccess = (moduleName:string,actionName:string) => {
         return next();
       }
 
-      //check permission:
-      const allowed = policies.some((p:any)=>{
-        return (
-          p.module === moduleName &&
-          p.actions.includes(actionName)
-        );
-      });
-      if(!allowed){
-        return res.status(403).json({
-          message: "Forbidden: Access denied"
-        });
+      // Check flat string: 'network.create'
+      const requiredPermission = `${moduleCode}.${actionCode}`;
+
+      if (!policies.includes(requiredPermission)) {
+        return res.status(403).json({ message: "Forbidden: Access denied" });
       }
+      
       next();
     }catch(error){
       return res.status(500).json({

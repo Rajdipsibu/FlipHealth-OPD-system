@@ -67,12 +67,13 @@ export const login = async (req: Request, res: Response) => {
 
     //token:
     const accessToken  = jwt.sign(userData,env.JWT_SECRET,{expiresIn: "1h"});
-    const refreshToken  = jwt.sign({ id: user.id }, env.REFRESH_SECRET, { expiresIn: "7d" });
+    const refreshToken  = jwt.sign({ id: user.dataValues.id }, env.REFRESH_SECRET, { expiresIn: "7d" });
 
     //Store in Sessions Table
-    // Optional: Delete old sessions first if you only want 1 active login
-    // await Session.destroy({ where: { user_id: user.id, type: 'access_token' }
-    /*
+    
+    // Delete old sessions first if you only want 1 active login
+    await Session.destroy({ where: { user_id: user.dataValues.id, type: ['access_token', 'refresh_token']  }});
+    
     await Session.bulkCreate([
       { 
         user_id: user.dataValues.id, 
@@ -87,7 +88,6 @@ export const login = async (req: Request, res: Response) => {
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
       }
     ])
-    */
 
     //send the token into the response:
     return res.status(200).json({
@@ -145,9 +145,9 @@ export const refreshToken = async (req: Request, res: Response) => {
     const user = await User.findByPk(decoded.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const policies = await getUserPolicies(user.id); 
+    const policies = await getUserPolicies(user.dataValues.id); 
 
-    const userData = { id: user.id, user_type: user.user_type, policies } ; 
+    const userData = { id: user.dataValues.id, user_type: user.dataValues.user_type, policies } ; 
 
     // 4. Generate New Access Token
     const newAccessToken = jwt.sign( userData, env.JWT_SECRET,  { expiresIn: "1h" } );
@@ -160,7 +160,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       },
       {
         where:{
-          user_id:user.id,
+          user_id:user.dataValues.id,
           type:"access_token"
         }
       }
@@ -196,33 +196,30 @@ const getUserPolicies = async(userId:number)=>{
         }
       ]
     });
-
-    const policies:any[] = [];
+    //Create Flat Dot Notation Array
+    const policies:string[] = [];
 
     const permissionData = permissionRoles.map(p => p.toJSON());
 
-    for(const pd of permissionData){
+    permissionData.forEach(pd => {
       const module_action = pd.ModuleAction;
-      const moduleName = module_action?.Module?.code;
-      const actionName = module_action?.Action?.code;
-      
-      if(!moduleName || !actionName) continue;
+      const module_code = module_action?.Module?.code;
+      const action_code = module_action?.Action?.code;
 
-      let existing = policies.find((p)=> p.module === moduleName);
-
-      if(!existing){
-        existing = {module:moduleName,actions:[]};
-        policies.push(existing);
+      if (module_code && action_code) {
+        const policyString = `${module_code}.${action_code}`;
+        
+        // Ensure no duplicates
+        if (!policies.includes(policyString)) {
+          policies.push(policyString);
+        }
       }
-
-      if(!existing.actions.includes(actionName)){
-        existing.actions.push(actionName);
-      }
-    }
-
-    return policies;
+    })
+    
+    return policies.sort();
   }catch(err){
-
+    console.error("Policy Flattening Error:", err);
+    return [];
   }
 }
 

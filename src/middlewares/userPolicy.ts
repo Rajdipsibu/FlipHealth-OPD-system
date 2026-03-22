@@ -23,7 +23,7 @@ export const userPolicy = async(req:Request,res:Response,next:NextFunction) => {
     }
     const decoded = jwt.verify(token, env.JWT_SECRET) as any;
 
-    /** 
+    
     //CHECK DATABASE: Ensure this token exists in the sessions table
     const sessionExists = await Session.findOne({ 
       where: { 
@@ -36,8 +36,7 @@ export const userPolicy = async(req:Request,res:Response,next:NextFunction) => {
     if (!sessionExists) {
       return res.status(401).json({ message: "Session expired or logged out!" });
     }
-    */
-   
+
     //attach to the request:
     req.token = {
       id:decoded.id,

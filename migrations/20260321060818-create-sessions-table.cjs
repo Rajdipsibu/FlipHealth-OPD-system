@@ -25,7 +25,7 @@ module.exports = {
         allowNull: false
       },
       token: {
-        type: Sequelize.STRING(512),
+        type: Sequelize.TEXT,
         allowNull: false
       },
       expires_at: {
@@ -43,8 +43,6 @@ module.exports = {
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
       }
     });
-    // Add an index on token for faster lookups
-    await queryInterface.addIndex('sessions', ['token']);
   },
 
   async down (queryInterface, Sequelize) {
