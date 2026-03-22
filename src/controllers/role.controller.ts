@@ -4,7 +4,7 @@ import Role from "../models/Role.js";
 
 // 1. List all roles
 export const getRoles = async (req: Request, res: Response) => {
-  try {
+  try {    
     const roles = await Role.findAll();
     return res.status(200).json({ data: roles });
   } catch (err) {

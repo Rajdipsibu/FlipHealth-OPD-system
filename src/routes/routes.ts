@@ -23,48 +23,48 @@ router.post('/auth/verify-otp', verifyOtp);
 router.post('/auth/send-otp', sendOtp);
 
 //user
-router.get('/users',userPolicy,userAccess("user_management","listview"),getListUser) //list users
-router.get('/users/:id',userPolicy,userAccess("user_management","view"),getUserById) //get user
-router.post('/users',userPolicy,userAccess("user_management","create"),createUser) //create user
-router.patch('/users/:id',userPolicy,userAccess("user_management","update"),updateUserType) //create user
-router.put('/users/:id',userPolicy,userAccess("user_management","update"),updateUser) //update user
-router.delete('/users/:id',userPolicy,userAccess("user_management","delete"),deleteUser) //soft delete
+router.get('/users',userPolicy,userAccess("user","listview"),getListUser) //list users
+router.get('/users/:id',userPolicy,userAccess("user","view"),getUserById) //get user
+router.post('/users',userPolicy,userAccess("user","create"),createUser) //create user
+router.patch('/users/:id',userPolicy,userAccess("user","update"),updateUserType) //update user_type
+router.put('/users/:id',userPolicy,userAccess("user","update"),updateUser) //update user
+router.delete('/users/:id',userPolicy,userAccess("user","delete"),deleteUser) //soft delete
 
 //---------------------PERMISSION (RBAC)----------------------
 
 //role
-router.get('/roles',userPolicy,userAccess("role_management","listview"),getRoles)
-router.post('/roles',userPolicy,userAccess("role_management","create"),createRole)   
-router.put('/roles/:id',userPolicy,userAccess("role_management","update"),updateRole)
-router.delete('/roles/:id',userPolicy,userAccess("role_management","delete"),deleteRole)
+router.get('/roles',userPolicy,userAccess("role","listview"),getRoles)
+router.post('/roles',userPolicy,userAccess("role","create"),createRole)   
+router.put('/roles/:id',userPolicy,userAccess("role","update"),updateRole)
+router.delete('/roles/:id',userPolicy,userAccess("role","delete"),deleteRole)
 
 // Modules
-router.get('/modules',userPolicy,userAccess("module_management",'listview'),getListModules)
-router.post('/modules',userPolicy,userAccess("module_management","create"), createModules)
-router.put('/modules/:id',userPolicy,userAccess("module_management","update"), updateModule)
-router.delete('/modules/:id',userPolicy,userAccess("module_management","delete"), deleteModule)
+router.get('/modules',userPolicy,userAccess("resource",'listview'),getListModules)
+router.post('/modules',userPolicy,userAccess("resource","create"), createModules)
+router.put('/modules/:id',userPolicy,userAccess("resource","update"), updateModule)
+router.delete('/modules/:id',userPolicy,userAccess("resource","delete"), deleteModule)
 
 // Actions
-router.get('/actions',userPolicy,userAccess("action_management",'listview'),getActions)
-router.post('/actions',userPolicy,userAccess("action_management",'create'),createAction)
-router.put('/actions/:id',userPolicy,userAccess("action_management",'update'),updateAction)
-router.delete('/actions/:id',userPolicy,userAccess("action_management",'delete'),deleteAction)
+router.get('/actions',userPolicy,userAccess("action",'listview'),getActions)
+router.post('/actions',userPolicy,userAccess("action",'create'),createAction)
+router.put('/actions/:id',userPolicy,userAccess("action",'update'),updateAction)
+router.delete('/actions/:id',userPolicy,userAccess("action",'delete'),deleteAction)
 
 // Module Actions
-router.get('/module-actions',userPolicy,userAccess("module_action_management","listview"),getModuleActions)
-router.post('/module-actions',userPolicy,userAccess("module_action_management","create"),createModuleAction)
-router.delete('/module-actions/:id',userPolicy,userAccess("module_action_management","delete"),deleteModuleAction)
+router.get('/module-actions',userPolicy,userAccess("m_action","listview"),getModuleActions)
+router.post('/module-actions',userPolicy,userAccess("m_action","create"),createModuleAction)
+router.delete('/module-actions/:id',userPolicy,userAccess("m_action","delete"),deleteModuleAction)
 
 // Role Permissions
-router.get('/permissions/roles/:roleId',userPolicy,userAccess("role_management","view"),getRolePermissions)
-router.post('/permissions/roles/:roleId',userPolicy,userAccess("role_management","create"),createRolePermission)
-router.delete('/permissions/roles/:id',userPolicy,userAccess("role_management","delete"),deleteRolePermission)
+router.get('/permissions/roles/:roleId',userPolicy,userAccess("role","view"),getRolePermissions)
+router.post('/permissions/roles/:roleId',userPolicy,userAccess("role","create"),createRolePermission)
+router.delete('/permissions/roles/:id',userPolicy,userAccess("role","delete"),deleteRolePermission)
 
 
 // USER ROLE ASSIGNMENT
-router.post('/users/:id/roles',userPolicy,userAccess("user_role_management","create"),assignUserRole)//assign role
-router.delete('/users/:id/roles/:roleId',userPolicy,userAccess("user_role_management","delete"),removeUserRole) //remove role
-router.get('/users/:id/roles',userPolicy,userAccess("user_role_management","view"),getUserRoles) //get roles
+router.post('/users/:id/roles',userPolicy,userAccess("user_role","create"),assignUserRole)//assign role
+router.delete('/users/:id/roles/:roleId',userPolicy,userAccess("user_role","delete"),removeUserRole) //remove role
+router.get('/users/:id/roles',userPolicy,userAccess("user_role","view"),getUserRoles) //get roles
 
 
 //-------------BUSINESS MODULE ROUTES----------------

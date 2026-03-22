@@ -2,6 +2,7 @@ import type{ Request, Response } from "express";
 import ModuleAction from "../models/ModuleAction.js";
 import Module from "../models/Module.js";
 import Action from "../models/Action.js";
+import PermissionRole from "../models/PermissionRole.js";
 
 // 1. Get List View 
 export const getModuleActions = async (req: Request, res: Response) => {
@@ -47,6 +48,9 @@ export const deleteModuleAction = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+
+    // Delete associated permissions
+    await PermissionRole.destroy({ where: { module_action_id: id } });
 
     const deletedCount = await ModuleAction.destroy({ where: { id } });
 

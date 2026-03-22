@@ -23,4 +23,4 @@ ModuleAction.belongsToMany(Role,{
 });
 
 UserRole.belongsTo(Role,{foreignKey:"role_id"});
-Role.hasMany(Role,{foreignKey:"role_id"})
+Role.hasMany(UserRole,{foreignKey:"role_id"})
