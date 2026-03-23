@@ -5,7 +5,7 @@ import Role from "../models/Role.js";
 // 1. List all roles
 export const getRoles = async (req: Request, res: Response) => {
   try {    
-    const roles = await Role.findAll();
+    const roles = await Role.findAll({where:{is_deleted:false}});
     return res.status(200).json({ data: roles });
   } catch (err) {
     console.error(err);
@@ -74,10 +74,20 @@ export const deleteRole = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid ID!" });
 
-    const deleted = await Role.destroy({ where: { id } });
-    if (!deleted) return res.status(404).json({ message: "Role not found!" });
+    // 1. Check if the role is already deleted or doesn't exist
+    const role = await Role.findOne({ where: { id, is_deleted: false } });
 
-    return res.status(200).json({ message: "Role deleted successfully!" });
+    if (!role) {
+      return res.status(404).json({ message: "Role not found or already deleted!" });
+    }
+
+    // 2. Perform Soft Delete
+    await Role.update(
+      {is_deleted: true},
+      {where:{id}}
+    );
+
+    return res.status(200).json({ message: "Role deleted successfully (Soft Delete)!" });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Internal server error!" });

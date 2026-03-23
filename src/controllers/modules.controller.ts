@@ -4,7 +4,7 @@ import { Op } from 'sequelize';
 
 export const getListModules = async (req: Request, res: Response) => {
   try {
-    const module = await Module.findAll();
+    const module = await Module.findAll({where:{is_deleted:false}});
     res.status(200).json(module);
   } catch (err) {
     console.error(err);
@@ -35,12 +35,14 @@ export const deleteModule = async (req: Request, res: Response) => {
   try{
     const id = Number(req.params.id);
     if(!id)return res.status(400).json({message:"id not givien !!"})
-    //check the module exist or not
-    const isExist = await Module.findByPk(id);
-    if(!isExist)return res.status(400).json({message:"module is not exist !!"});
 
-    //finaly delete the module:
-    await Module.destroy({where:{id}});
+
+    //check if the module is already deleted or doesn't exist
+    const module = await Module.findOne({where:{id,is_deleted:false}});
+    if(!module)return res.status(400).json({message:"module not found or already deleted !!"});
+
+    //Perform Soft Delete the module:
+    await Module.update({ is_deleted: true },{where:{id}});
     return res.status(200).json({message:"module is deleted successfully"});
   }catch(err){
     console.error(err);

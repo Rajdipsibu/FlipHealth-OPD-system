@@ -329,7 +329,7 @@ export const sendOtp = async(req: Request, res: Response) =>{
 
     //Set Expiry (e.g., 10 minutes from now)
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-    
+
     const userId = user.dataValues.id;
 
     const existingOtpSession = await Session.findOne({
@@ -368,27 +368,34 @@ export const verifyOtp = async(req: Request, res: Response) =>{
     }
     // 1. Find user by email
     const user = await User.findOne({ where: { email:email } });
+    
+    const userId = user?.dataValues.id;
 
+    //find otp from database:
+    const session_otp = await Session.findOne({where:{user_id:userId, type:"otp", is_deleted:false}});
+
+    const otp_value = session_otp?.dataValues.token;
+    const otp_expiry = session_otp?.dataValues.expires_at;
     // 2. Check if OTP has expired
-    // Assuming you stored 'otp_expiry' as a Date object in your DB
-    // if (user.otp_expiry && new Date() > user.otp_expiry) {
-    //   return res.status(400).json({ message: "OTP has expired. Please request a new one." });
-    // }
+    if (otp_expiry && new Date() > otp_expiry) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+    }
 
     // 3. Verify OTP (Compare provided OTP with stored OTP)
     // If you hashed the OTP for security, use bcrypt.compare
     // const isMatch = otp === user.otp; // Simple comparison if not hashed
+    const isMatch = otp === otp_value;
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid OTP code" });
+    }
 
-    // if (!isMatch) {
-    //   return res.status(400).json({ message: "Invalid OTP code" });
-    // }
+    // 4. Update user verified
+    await user?.update({
+      is_verified: true
+    })
 
-    // 4. Update user status
-    // await user.update({
-    //   is_verified: true,
-    //   otp: null,         // Clear OTP after successful use
-    //   otp_expiry: null   // Clear expiry
-    // });
+    //delete the otp from session table:
+    await session_otp?.destroy();
 
     return res.status(200).json({
       message: "Account verified successfully!",

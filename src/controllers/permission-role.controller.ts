@@ -67,11 +67,13 @@ export const deleteRolePermission = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid ID!" });
 
-    const deleted = await PermissionRole.destroy({ where: { id } });
-
-    if (!deleted) {
-      return res.status(404).json({ message: "Permission record not found!" });
+    // 1. Check if the PermissionRole is already deleted or doesn't exist
+    const permission_role = await PermissionRole.findOne({ where: { id, is_deleted: false } });
+    if (!permission_role) {
+      return res.status(404).json({ message: "permission_role not found or already deleted!" });
     }
+
+    await PermissionRole.update({is_deleted:true},{ where: { id } });
 
     return res.status(200).json({ message: "Permission removed successfully!" });
   } catch (err) {

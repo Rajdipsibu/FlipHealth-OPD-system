@@ -36,24 +36,24 @@ router.delete('/users/:id',userPolicy,userAccess("user","delete"),deleteUser) //
 router.get('/roles',userPolicy,userAccess("role","listview"),getRoles)
 router.post('/roles',userPolicy,userAccess("role","create"),createRole)   
 router.put('/roles/:id',userPolicy,userAccess("role","update"),updateRole)
-router.delete('/roles/:id',userPolicy,userAccess("role","delete"),deleteRole)
+router.delete('/roles/:id',userPolicy,userAccess("role","delete"),deleteRole)//soft deleted
 
 // Modules
-router.get('/modules',userPolicy,userAccess("resource",'listview'),getListModules)
-router.post('/modules',userPolicy,userAccess("resource","create"), createModules)
-router.put('/modules/:id',userPolicy,userAccess("resource","update"), updateModule)
-router.delete('/modules/:id',userPolicy,userAccess("resource","delete"), deleteModule)
+router.get('/modules',userPolicy,userAccess("module",'listview'),getListModules)
+router.post('/modules',userPolicy,userAccess("module","create"), createModules)
+router.put('/modules/:id',userPolicy,userAccess("module","update"), updateModule)
+router.delete('/modules/:id',userPolicy,userAccess("module","delete"), deleteModule)//soft delete
 
 // Actions
 router.get('/actions',userPolicy,userAccess("action",'listview'),getActions)
 router.post('/actions',userPolicy,userAccess("action",'create'),createAction)
 router.put('/actions/:id',userPolicy,userAccess("action",'update'),updateAction)
-router.delete('/actions/:id',userPolicy,userAccess("action",'delete'),deleteAction)
+router.delete('/actions/:id',userPolicy,userAccess("action",'delete'),deleteAction)//soft delete
 
 // Module Actions
-router.get('/module-actions',userPolicy,userAccess("m_action","listview"),getModuleActions)
-router.post('/module-actions',userPolicy,userAccess("m_action","create"),createModuleAction)
-router.delete('/module-actions/:id',userPolicy,userAccess("m_action","delete"),deleteModuleAction)
+router.get('/module-actions',userPolicy,userAccess("module_action","listview"),getModuleActions)
+router.post('/module-actions',userPolicy,userAccess("module_action","create"),createModuleAction)
+router.delete('/module-actions/:id',userPolicy,userAccess("module_action","delete"),deleteModuleAction)
 
 // Role Permissions
 router.get('/permissions/roles/:roleId',userPolicy,userAccess("role","view"),getRolePermissions)

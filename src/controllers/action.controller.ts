@@ -5,7 +5,7 @@ import Action from "../models/Action.js";
 // 1. List all actions
 export const getActions = async (req: Request, res: Response) => {
   try {
-    const actions = await Action.findAll();
+    const actions = await Action.findAll({where:{is_deleted:false}});
     return res.status(200).json({ data: actions });
   } catch (err) {
     console.error(err);
@@ -74,8 +74,13 @@ export const deleteAction = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid ID!" });
 
-    const deleted = await Action.destroy({ where: { id } });
-    if (!deleted) return res.status(404).json({ message: "Action not found!" });
+    //check action is already deleted or doesn't exist
+    const action = await Action.findOne({ where: { id, is_deleted: false } });
+    if (!action) {
+      return res.status(404).json({ message: "action not found or already deleted!" });
+    }
+
+    await Action.update({is_deleted:true},{ where: { id } });
 
     return res.status(200).json({ message: "Action deleted successfully!" });
   } catch (err) {
