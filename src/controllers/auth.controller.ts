@@ -226,46 +226,80 @@ const getUserPolicies = async(userId:number)=>{
 export const forgotPassword = async(req: Request, res: Response) => {
   try{
     const {email} = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+    //user exist: check
     const user = await User.findOne({where:{email,is_deleted:false} });
 
     if(!user){
-      return res.status(200).json({ message: "Reset link sent to your email." });
+      return res.status(200).json({ message: "User with this email does not exist" });
     }
 
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    //Set Expiry (e.g., 10 minutes from now)
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
     const userId = user.dataValues.id;
-    //generate a random reset token
-    const resetToken = crypto.randomBytes(32).toString("hex");
 
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
-
-    const existingSession = await Session.findOne({
-      where: { user_id: userId, type: "reset_token" }
+    const existingOtpSession = await Session.findOne({
+      where: { user_id: userId, type: "otp" }
     });
 
-    if (existingSession) {
-      // Update the existing reset_token
-      await existingSession.update({
-        token: resetToken,
-        expires_at: expiresAt
+    if(existingOtpSession){
+      await existingOtpSession.update({
+        token: otp,
+        expires_at: otpExpiry
       });
     }else{
-      // create new row (Type: reset_token)
       await Session.create({
-        user_id:user.dataValues.id,
-        type:"reset_token",
-        token:resetToken,
-        expires_at:new Date(Date.now() + 15 * 60 * 1000) //15 min
+        user_id: userId,
+        type: "otp",
+        token: otp,
+        expires_at: otpExpiry
       });
-    }    
+    }
 
-    //send Email
-    await sendMail(
-      email,
-      `reset link`,
-      `<p>Your reset link: /reset-password?token=${resetToken}</p>`
-    )
+    //send mail:
+    await sendMail(email,'LOGIN OTP',`your otp is: ${otp}`);
+    
+    return res.status(200).json({ message: "OTP sent successfully to your email!" , OTP:otp ,purpose:"RESET_PASSWORD"});
 
-    return res.status(200).json({ message: "Reset link sent to your email.",resetToken });
+    // //generate a random reset token
+    // const resetToken = crypto.randomBytes(32).toString("hex");
+
+    // const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+    // const existingSession = await Session.findOne({
+    //   where: { user_id: userId, type: "reset_token" }
+    // });
+
+    // if (existingSession) {
+    //   // Update the existing reset_token
+    //   await existingSession.update({
+    //     token: resetToken,
+    //     expires_at: expiresAt
+    //   });
+    // }else{
+    //   // create new row (Type: reset_token)
+    //   await Session.create({
+    //     user_id:user.dataValues.id,
+    //     type:"reset_token",
+    //     token:resetToken,
+    //     expires_at:new Date(Date.now() + 15 * 60 * 1000) //15 min
+    //   });
+    // }    
+
+    // //send Email
+    // await sendMail(
+    //   email,
+    //   `reset link`,
+    //   `<p>Your reset link: /reset-password?token=${resetToken}</p>`
+    // )
+
+    // return res.status(200).json({ message: "Reset link sent to your email.",resetToken });
   }catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Internal server error" });
@@ -274,10 +308,12 @@ export const forgotPassword = async(req: Request, res: Response) => {
 
 export const resetPassword = async (req: Request, res: Response) => {
   try{
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword) {
-      return res.status(400).json({ message: "Token and new password are required!" });
+    const { token, newPassword, confirmPassword } = req.body;
+    if (!token || !newPassword || !confirmPassword) {
+      return res.status(400).json({ message: "Token and new password or confirm Password are required!" });
     }
+
+    if(newPassword != confirmPassword)return res.status(400).json({message:"mismatch password !!"});
 
     // 1. Find the token in the sessions table and check if it's expired
     const session = await Session.findOne({
@@ -320,7 +356,8 @@ export const sendOtp = async(req: Request, res: Response) =>{
       return res.status(400).json({ message: "Email is required" });
     }
     //user exist !
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email ,is_deleted:false} });
+
     if (!user) {
       return res.status(404).json({ message: "User with this email does not exist" });
     }
@@ -353,7 +390,7 @@ export const sendOtp = async(req: Request, res: Response) =>{
     //send mail:
     await sendMail(email,'LOGIN OTP',`your otp is: ${otp}`);
 
-    return res.status(200).json({ message: "OTP sent successfully to your email!" , OTP:otp });
+    return res.status(200).json({ message: "OTP sent successfully to your email!" , OTP:otp, purpose:"LOGIN"});
   }catch (error: any) {
     console.error("Send OTP Error:", error.message);
     return res.status(500).json({ message: "Failed to send OTP" });
@@ -362,47 +399,141 @@ export const sendOtp = async(req: Request, res: Response) =>{
 
 export const verifyOtp = async(req: Request, res: Response) =>{
   try{
-    const { email, otp } = req.body;
-    if (!email || !otp) {
-      return res.status(400).json({ message: "Email and OTP are required" });
+    const { email, OTP, purpose } = req.body;
+    if (!email || !OTP || !purpose) {
+      return res.status(400).json({ message: "Email and OTP and purpose are required" });
     }
+
     // 1. Find user by email
     const user = await User.findOne({ where: { email:email } });
+    if (!user) return res.status(404).json({ message: "User not found" });
     
     const userId = user?.dataValues.id;
 
-    //find otp from database:
-    const session_otp = await Session.findOne({where:{user_id:userId, type:"otp", is_deleted:false}});
+    // 1. Find and validate the OTP session
+    const sessionOtp = await Session.findOne({
+      where:{user_id:userId, type:"otp", token: OTP}
+    });
 
-    const otp_value = session_otp?.dataValues.token;
-    const otp_expiry = session_otp?.dataValues.expires_at;
-    // 2. Check if OTP has expired
-    if (otp_expiry && new Date() > otp_expiry) {
-      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
-    }
-
-    // 3. Verify OTP (Compare provided OTP with stored OTP)
-    // If you hashed the OTP for security, use bcrypt.compare
-    // const isMatch = otp === user.otp; // Simple comparison if not hashed
-    const isMatch = otp === otp_value;
-    if (!isMatch) {
+    if (!sessionOtp) {
       return res.status(400).json({ message: "Invalid OTP code" });
     }
 
-    // 4. Update user verified
-    await user?.update({
-      is_verified: true
-    })
+    const otp_expiry = sessionOtp?.dataValues.expires_at;
 
-    //delete the otp from session table:
-    await session_otp?.destroy();
+    if (new Date() > otp_expiry) {
+      await sessionOtp.destroy();
+      return res.status(400).json({ message: "OTP has expired" });
+    }
 
-    return res.status(200).json({
-      message: "Account verified successfully!",
-      is_verified: true
-    });
+    // --- Path A: LOGIN ---
+    if(purpose === 'LOGIN'){
+      const policies = await getUserPolicies(userId);
+
+      const userData = {id: user.dataValues.id,user_type: user.dataValues.user_type,policies}
+
+      //token:
+      const accessToken  = jwt.sign(userData,env.JWT_SECRET,{expiresIn: "1h"});
+      const refreshToken  = jwt.sign({ id: user.dataValues.id }, env.REFRESH_SECRET, { expiresIn: "7d" });
+
+      await sessionOtp.destroy();
+
+      // Delete old sessions first if you only want 1 active login
+      await Session.destroy({ where: { user_id: user.dataValues.id, type: ['access_token', 'refresh_token']  }});
+      
+      await Session.bulkCreate([
+        { 
+          user_id: user.dataValues.id, 
+          type: "access_token",
+          token: accessToken, 
+          expires_at: new Date(Date.now() + 60 * 60 * 1000) 
+        },
+        { 
+          user_id: user.dataValues.id, 
+          type: "refresh_token", 
+          token: refreshToken, 
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
+        }
+      ])
+
+      return res.status(200).json({
+        message: "Login successful",
+        accessToken,
+        refreshToken
+      });
+    }
+
+    // --- Path B: RESET_PASSWORD ---
+    if(purpose === 'RESET_PASSWORD'){
+      const resetToken = crypto.randomBytes(32).toString("hex");
+
+      // Replace the OTP session with a Reset Token session
+      await sessionOtp.destroy();
+      await Session.create({
+        user_id:userId,
+        type:"reset_token",
+        token:resetToken,
+        expires_at:new Date(Date.now()+15*60*1000) //15 min validity
+      });
+
+      return res.status(200).json({
+        message: "OTP verified. You can now reset your password.",
+        resetToken //// Frontend will use this in the final /reset-password call
+      })
+    }
+
+    return res.status(400).json({ message: "Invalid purpose" });
+    
   }catch (error: any) {
     console.error("OTP Verification Error:", error.message);
     res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export const getProfile = async(req:Request,res:Response) =>{
+  try{
+    const id = req.token.id;
+    const user = await User.findByPk(id);
+    if(!user)return res.status(401).json({message:"user not found !!"});
+
+    //exclude the id:
+    const userResponse = user.toJSON() as any ;
+    delete userResponse.id;
+    delete userResponse.password;
+
+    return res.status(200).json({message:"success",user:userResponse});
+  }catch(e){
+    console.error(e);
+    res.status(500).json({message:"internal server error !!"})
+  }
+}
+
+export const changePassword = async(req:Request,res:Response) => {
+  const {oldPassword, newPassword, confirmPassword} = req.body;
+
+  if(!oldPassword || !newPassword || !confirmPassword){
+    return res.status(400).json({message:"all field are required !!"});
+  }
+
+  try{
+    //find the password and check it correct or not:
+    const id = req.token.id
+    const user = await User.findByPk(id);
+    if(!user)return res.status(400).json({message:"user not found"});
+
+    const user_password = user.dataValues.password;
+    const isMatch = bcrypt.compare(user_password,oldPassword);
+    if(!isMatch)return res.status(400).json({message:"password is incorrect !!"});
+
+    if(newPassword != confirmPassword){
+      return res.status(400).json({message:"password mismatch"});
+    }
+
+    //update the password :
+    await user.update({password:newPassword});
+    return res.status(200).json({message:"password is updated successfully !!"});
+  }catch(e){
+    console.error(e);
+    res.status(500).json({message:"internal server error !!"})
   }
 }
