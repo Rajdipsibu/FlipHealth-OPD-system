@@ -7,6 +7,8 @@ interface ModuleAttributes {
   name: string;
   code: string;
   description?: string;
+  status?:boolean;
+  is_deleted?:boolean;
 }
 
 interface ModuleCreationAttributes extends Optional<ModuleAttributes, 'id'>{}
@@ -16,6 +18,8 @@ class Module extends Model<ModuleAttributes,ModuleCreationAttributes>implements 
   public name!:string;
   public code!:string;
   public description?: string;
+  public status?:boolean;
+  public is_deleted?:boolean;
 }
 
 Module.init(
@@ -28,7 +32,6 @@ Module.init(
     name:{
       type: DataTypes.STRING,
       allowNull: false,
-      unique:true
     },
     code:{
       type:DataTypes.STRING,
@@ -38,6 +41,16 @@ Module.init(
     description:{
       type: DataTypes.STRING,
       allowNull: true
+    },
+    status:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:true
+    },
+    is_deleted:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:false
     }
   },
   {

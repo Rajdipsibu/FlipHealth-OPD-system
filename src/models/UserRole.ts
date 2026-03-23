@@ -5,6 +5,8 @@ interface UserRoleAttributes {
   id: number;
   user_id:number;
   role_id:number;
+  status?:boolean;
+  is_deleted?:boolean;
 }
 
 interface UserRoleCreationAttributes extends Optional<UserRoleAttributes, 'id'>{}
@@ -13,6 +15,8 @@ class UserRole extends Model<UserRoleAttributes,UserRoleCreationAttributes>imple
   public id!:number;
   public user_id!:number;
   public role_id!:number;
+  public status?:boolean;
+  public is_deleted?:boolean;
 }
 
 UserRole.init(
@@ -35,6 +39,16 @@ UserRole.init(
         model:"roles",
         key:"id"
       }
+    },
+    status:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:true
+    },
+    is_deleted:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:false
     }    
   },
   {

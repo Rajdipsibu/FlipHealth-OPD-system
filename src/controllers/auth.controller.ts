@@ -232,16 +232,31 @@ export const forgotPassword = async(req: Request, res: Response) => {
       return res.status(200).json({ message: "Reset link sent to your email." });
     }
 
+    const userId = user.dataValues.id;
     //generate a random reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
 
-    // Store it in the Sessions table (Type: reset_token)
-    await Session.create({
-      user_id:user.dataValues.id,
-      type:"reset_token",
-      token:resetToken,
-      expires_at:new Date(Date.now() + 15 * 60 * 1000) //15 min
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+    const existingSession = await Session.findOne({
+      where: { user_id: userId, type: "reset_token" }
     });
+
+    if (existingSession) {
+      // Update the existing reset_token
+      await existingSession.update({
+        token: resetToken,
+        expires_at: expiresAt
+      });
+    }else{
+      // create new row (Type: reset_token)
+      await Session.create({
+        user_id:user.dataValues.id,
+        type:"reset_token",
+        token:resetToken,
+        expires_at:new Date(Date.now() + 15 * 60 * 1000) //15 min
+      });
+    }    
 
     //send Email
     await sendMail(
@@ -314,12 +329,26 @@ export const sendOtp = async(req: Request, res: Response) =>{
 
     //Set Expiry (e.g., 10 minutes from now)
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    
+    const userId = user.dataValues.id;
 
-    // 4. Save to Database
-    // await user.update({
-    //   otp: otp,
-    //   otp_expiry: otpExpiry
-    // });
+    const existingOtpSession = await Session.findOne({
+      where: { user_id: userId, type: "otp" }
+    });
+
+    if(existingOtpSession){
+      await existingOtpSession.update({
+        token: otp, // Storing the OTP string in the 'token' field
+        expires_at: otpExpiry
+      });
+    }else{
+      await Session.create({
+        user_id: userId,
+        type: "otp",
+        token: otp,
+        expires_at: otpExpiry
+      });
+    }
     
     //send mail:
     await sendMail(email,'LOGIN OTP',`your otp is: ${otp}`);

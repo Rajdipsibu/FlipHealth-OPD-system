@@ -5,6 +5,8 @@ interface ActionAttributes {
   id: number;
   name: string;
   code:string;
+  status?:boolean;
+  is_deleted?:boolean;
 }
 
 interface ActionCreationAttributes extends Optional<ActionAttributes, 'id'>{}
@@ -12,7 +14,9 @@ interface ActionCreationAttributes extends Optional<ActionAttributes, 'id'>{}
 class Action extends Model<ActionAttributes,ActionCreationAttributes>implements ActionAttributes{
   public id!:number;
   public name!:string;
-  public code!:string;  
+  public code!:string; 
+  public status?:boolean;
+  public is_deleted?:boolean; 
 }
 
 Action.init(
@@ -29,6 +33,16 @@ Action.init(
     code:{
       type: DataTypes.STRING,
       allowNull: false
+    },
+    status:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:true
+    },
+    is_deleted:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:false
     }
   },
   {

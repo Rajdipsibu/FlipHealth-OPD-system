@@ -6,6 +6,8 @@ interface RoleAttributes {
   name:string;
   code:string;
   description?:string;
+  status?:boolean;
+  is_deleted?:boolean;
 }
 
 interface RoleCreationAttributes extends Optional<RoleAttributes, 'id'>{}
@@ -15,6 +17,8 @@ class Role  extends Model<RoleAttributes,RoleCreationAttributes>implements RoleA
   public name!:string;
   public code!:string;
   public description?:string;
+  public status?:boolean;
+  public is_deleted?:boolean;
 }
 
 Role.init(
@@ -34,7 +38,17 @@ Role.init(
     },
     description:{
       type:DataTypes.STRING,
-    }
+    },
+    status:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:true
+    },
+    is_deleted:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:false
+    } 
   },
   {
     sequelize,

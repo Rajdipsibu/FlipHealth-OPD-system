@@ -6,6 +6,8 @@ interface PermissionRoleAttributes {
   id: number;
   role_id:number;
   module_action_id:number;
+  status?:boolean;
+  is_deleted?:boolean;
   ModuleAction?: ModuleAction;
 }
 
@@ -15,6 +17,8 @@ class PermissionRole   extends Model<PermissionRoleAttributes,PermissionRoleCrea
   public id!:number;
   public role_id!:number;
   public module_action_id!:number;
+  public status?:boolean;
+  public is_deleted?:boolean;
   public ModuleAction?: ModuleAction;
 }
 
@@ -38,6 +42,16 @@ PermissionRole.init(
         model:"moduleactions",
         key:"id"
       }
+    },
+    status:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:true
+    },
+    is_deleted:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:false
     }    
   },
   {

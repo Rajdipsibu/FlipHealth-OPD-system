@@ -7,6 +7,8 @@ interface ModuleActionAttributes {
   id: number;
   module_id:number;
   action_id:number;
+  status?:boolean;
+  is_deleted?:boolean;
 }
 
 interface ModuleActionCreationAttributes extends Optional<ModuleActionAttributes, 'id'>{}
@@ -15,7 +17,8 @@ class ModuleAction  extends Model<ModuleActionAttributes,ModuleActionCreationAtt
   public id!:number;
   public module_id!:number;
   public action_id!:number;
-
+  public status?:boolean;
+  public is_deleted?:boolean;
   public Module?: Module;
   public Action?:Action;
 }
@@ -40,6 +43,16 @@ ModuleAction.init(
         model:"actions",
         key:"id"
       }
+    },
+    status:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:true
+    },
+    is_deleted:{
+      type:DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue:false
     }
   },
   {
