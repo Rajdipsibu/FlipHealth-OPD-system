@@ -5,8 +5,17 @@ import Role from "../models/Role.js";
 // 1. List all roles
 export const getRoles = async (req: Request, res: Response) => {
   try {    
-    const roles = await Role.findAll({where:{is_deleted:false}});
-    return res.status(200).json({ data: roles });
+    const {limit, offset} = req.pagging ;
+
+    const { count, rows } = await Role.findAndCountAll({
+      where: { is_deleted: false },
+      limit,
+      offset
+    });
+
+    // const roles = await Role.findAll({where:{is_deleted:false}});
+
+    return res.status(200).json({ data: rows, total: count });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Error fetching roles!" });

@@ -53,7 +53,7 @@ router.put('/actions/:id',userPolicy,userAccess("action",'update'),updateAction)
 router.delete('/actions/:id',userPolicy,userAccess("action",'delete'),deleteAction)//soft delete
 
 // Module Actions
-router.get('/module-actions',userPolicy,userAccess("module_action","listview"),getModuleActions)
+router.get('/module-actions',userPolicy,userAccess("module_action","listview"), getModuleActions)
 router.post('/module-actions',userPolicy,userAccess("module_action","create"),createModuleAction)
 router.delete('/module-actions/:id',userPolicy,userAccess("module_action","delete"),deleteModuleAction)
 

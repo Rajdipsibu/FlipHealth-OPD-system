@@ -6,11 +6,27 @@ import bcrypt from "bcrypt"; // Recommended for passwords
 // Get List of Users
 export const getListUser = async (req: Request, res: Response) => {
   try {
+    // const token = req.token;
+    const {limit, offset} = req.pagging ;
+
     const users = await User.findAll({
       where: { is_deleted: false },
+      limit:limit,
+      offset:offset,
       attributes: { exclude: ['password'] }
     });
-    return res.status(200).json({ data: users });
+
+    //total count:
+    const totalCount = await User.count({where:{is_deleted:false}});
+
+    return res.status(200).json({ 
+      data: users,
+      meta:{
+        totalItems:totalCount,
+        currentPage: (offset / limit) + 1,
+        limit
+      }
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Error fetching users!" });

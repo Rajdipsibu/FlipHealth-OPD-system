@@ -5,8 +5,16 @@ import Action from "../models/Action.js";
 // 1. List all actions
 export const getActions = async (req: Request, res: Response) => {
   try {
-    const actions = await Action.findAll({where:{is_deleted:false}});
-    return res.status(200).json({ data: actions });
+    const {limit, offset} = req.pagging ;
+
+    const { count, rows } = await Action.findAndCountAll({
+      where: { is_deleted: false },
+      limit,
+      offset
+    });
+
+    // const actions = await Action.findAll({where:{is_deleted:false}});
+    return res.status(200).json({ data: rows , total:count });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Error fetching actions!" });
