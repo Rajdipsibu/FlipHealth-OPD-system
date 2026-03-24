@@ -2,6 +2,7 @@ import type{ Request, Response } from "express";
 import { Op } from "sequelize";
 import User from "../models/User.js";
 import bcrypt from "bcrypt"; // Recommended for passwords
+import { buildWhereClause } from "../helper/filterBuilder.js";
 
 // Get List of Users
 export const getListUser = async (req: Request, res: Response) => {
@@ -9,20 +10,27 @@ export const getListUser = async (req: Request, res: Response) => {
     // const token = req.token;
     const {limit, offset} = req.pagging ;
 
-    const users = await User.findAll({
-      where: { is_deleted: false },
+    const where = buildWhereClause(
+      req.query, 
+      ['email', 'phone', 'user_type'], // Allowed exact matches
+      ['name', 'email']              // Fields to check during 'search'
+    );
+
+    const { count, rows: users } = await User.findAndCountAll({
+      where,
       limit:limit,
       offset:offset,
-      attributes: { exclude: ['password'] }
+      attributes: { exclude: ['password'] },
+      order: [['createdAt', 'DESC']]
     });
 
     //total count:
-    const totalCount = await User.count({where:{is_deleted:false}});
+    // const totalCount = await User.count({where:{is_deleted:false}});
 
     return res.status(200).json({ 
       data: users,
-      meta:{
-        totalItems:totalCount,
+      count:{
+        totalItems:count,
         currentPage: (offset / limit) + 1,
         limit
       }
