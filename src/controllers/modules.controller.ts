@@ -4,8 +4,16 @@ import { Op } from 'sequelize';
 
 export const getListModules = async (req: Request, res: Response) => {
   try {
-    const module = await Module.findAll({where:{is_deleted:false}});
-    res.status(200).json(module);
+    const {limit, offset} = req.pagging ;
+
+    const { count, rows } = await Module.findAndCountAll({
+      where: { is_deleted: false },
+      limit,
+      offset
+    });
+
+    // const module = await Module.findAll({where:{is_deleted:false}});
+    res.status(200).json({data:rows,total:count});
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "internal server error !!!" });

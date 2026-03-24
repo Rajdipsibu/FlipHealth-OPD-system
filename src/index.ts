@@ -4,9 +4,12 @@ import sequelize, { connectDB } from './config/database.js';
 import router from './routes/routes.js';
 const app = express();
 import './models/index.js'
+import { pagination } from './middlewares/pagination.js';
 
 //middleware
 app.use(express.json());
+
+app.use(pagination);
 
 //routes
 app.use('/api/v1',router);
