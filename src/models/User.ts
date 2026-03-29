@@ -8,13 +8,13 @@ interface UserAttributes {
   name:string;
   email:string;
   password:string;
-  phone?:string;
+  phone?:string | null;
   status?:boolean;
   is_deleted?:boolean;
   is_verified?:boolean;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'user_type'>{}
+export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'user_type'>{}
 
 class User extends Model<UserAttributes,UserCreationAttributes>implements UserAttributes{
   public id!:number;
@@ -22,7 +22,7 @@ class User extends Model<UserAttributes,UserCreationAttributes>implements UserAt
   public name!:string;
   public email!:string;
   public password!:string;
-  public phone?:string;
+  public phone?:string | null;
   public status?:boolean;
   public is_deleted?:boolean;
   public is_verified?:boolean;

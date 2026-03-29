@@ -3,6 +3,8 @@ import { Op } from "sequelize";
 import User from "../models/User.js";
 import bcrypt from "bcrypt"; // Recommended for passwords
 import { buildWhereClause } from "../helper/filterBuilder.js";
+import type { CreateUserInput, UpdateUserInput, UpdateUserTypeInput } from "../schema/user.schema.js";
+import { UserService } from "../services/user.service.js";
 
 // Get List of Users
 export const getListUser = async (req: Request, res: Response) => {
@@ -58,43 +60,63 @@ export const getUserById = async (req: Request, res: Response) => {
 };
 
 // Create User
+// export const createUser = async (req: Request, res: Response) => {
+//   try {
+//     const { name, email, password, phone }:CreateUserInput = req.body;
+
+//     if (!name || !email || !password) {
+//       return res.status(400).json({ message: "Name, email, and password are required!" });
+//     }
+
+//     // Check if email already exists
+//     const existing = await User.findOne({ where: { email } });
+//     if (existing) return res.status(400).json({ message: "Email already registered!" });
+
+//     // Hash password
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     const newUser = await User.create({
+//       name,
+//       email,
+//       password: hashedPassword,
+//       phone: phone as string
+//       // user_type is handled by DB default "customer"
+//     }as any);
+
+//     // Remove password from response
+//     const { password: _, ...userData } = newUser.toJSON();
+//     return res.status(201).json({ message: "User created successfully!", data: userData });
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({ message: "Error creating user!" });
+//   }
+// };
+
+const userService = new UserService();
+
 export const createUser = async (req: Request, res: Response) => {
-  try {
-    const { name, email, password, phone } = req.body;
+  try{
+    const result = await userService.registerUser(req.body);
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "Name, email, and password are required!" });
+    return res.status(201).json({
+      status:"success",
+      message:"User created successfully",
+      data:result,
+    })
+  }catch(error:any){
+    // Handle specific business errors
+    if(error.message === "EMAIL_ALREADY_EXISTS"){
+      return res.status(400).json({message : "Email is already in use"})
     }
-
-    // Check if email already exists
-    const existing = await User.findOne({ where: { email } });
-    if (existing) return res.status(400).json({ message: "Email already registered!" });
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      phone,
-      // user_type is handled by DB default "customer"
-    });
-
-    // Remove password from response
-    const { password: _, ...userData } = newUser.toJSON();
-    return res.status(201).json({ message: "User created successfully!", data: userData });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Error creating user!" });
+    return res.status(500).json({message:"Internal server error !!"});
   }
-};
+}
 
 // Update User
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const { name, email, phone, status, is_verified } = req.body;
+    const { name, email, phone, status, is_verified }:UpdateUserInput = req.body;
 
     const userInstance = await User.findOne({ where: { id, is_deleted: false } });
     if (!userInstance) return res.status(404).json({ message: "User not found!" });
@@ -108,11 +130,11 @@ export const updateUser = async (req: Request, res: Response) => {
     }
 
     await userInstance.update({
-      name,
-      email,
-      phone,
-      status,
-      is_verified
+      ...(name && { name }),
+      ...(email && { email }),
+      ...(phone !== undefined && { phone }),
+      ...(status !== undefined && { status }),
+      ...(is_verified !== undefined && { is_verified }),
     });
 
     return res.status(200).json({ message: "User updated successfully!", data: userInstance });
@@ -143,7 +165,7 @@ export const deleteUser = async (req: Request, res: Response) => {
 export const updateUserType = async (req: Request, res: Response) =>{
   try{
     const id = Number(req.params.id);
-    const {user_type} = req.body;
+    const {user_type}:UpdateUserTypeInput = req.body;
     if(!user_type)return res.status(401).json({message:"user type not given !!"})
 
     const user = await User.findByPk(id);

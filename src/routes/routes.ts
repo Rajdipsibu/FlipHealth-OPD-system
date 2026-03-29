@@ -9,6 +9,8 @@ import { createRolePermission, deleteRolePermission, getRolePermissions } from "
 import { assignUserRole, getUserRoles, removeUserRole } from "../controllers/user-role.controller.js";
 import { createRole, deleteRole, getRoles, updateRole } from "../controllers/role.controller.js";
 import { createAction, deleteAction, getActions, updateAction } from "../controllers/action.controller.js";
+import { validate } from "../middlewares/validate.js";
+import { createSchema, updateSchema, updateUserTypeSchema } from "../schema/user.schema.js";
 
 const router = express.Router();
 
@@ -27,9 +29,9 @@ router.patch('/auth/change-password',userPolicy,changePassword)
 //user
 router.get('/users',userPolicy,userAccess("user","listview"),getListUser) //list users
 router.get('/users/:id',userPolicy,userAccess("user","view"),getUserById) //get user
-router.post('/users',userPolicy,userAccess("user","create"),createUser) //create user
-router.patch('/users/:id',userPolicy,userAccess("user","update"),updateUserType) //update user_type
-router.put('/users/:id',userPolicy,userAccess("user","update"),updateUser) //update user
+router.post('/users',userPolicy, validate(createSchema), userAccess("user","create"),createUser) //create user
+router.patch('/users/:id',userPolicy, userAccess("user","update"), validate(updateUserTypeSchema), updateUserType) //update user_type
+router.put('/users/:id',userPolicy,validate(updateSchema), userAccess("user","update"),updateUser) //update user
 router.delete('/users/:id',userPolicy,userAccess("user","delete"),deleteUser) //soft delete
 
 //---------------------PERMISSION (RBAC)----------------------
