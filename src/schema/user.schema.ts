@@ -6,12 +6,6 @@ export const createSchema = z.object({
     name:z.string().min(3,"Name must be at least 3 characters"),
     email:z.string()
       .email("Invalid email format"),
-      // .refine(async(email)=>{
-      //   const user = await User.findOne({where:{email,is_deleted:false}});
-      //   return !user; //Returns true if user NOT found
-      // },{
-      //   message: "Email is already registered"
-      // }),
     password:z.string()
       .min(6,{message: "Password must be at least 6 characters long"})
       .max(10,{message: "Password cannot exceed 32 characters" }),

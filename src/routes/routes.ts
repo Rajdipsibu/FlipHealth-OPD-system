@@ -1,5 +1,5 @@
 import express from "express";
-import { changePassword, forgotPassword, getProfile, login, logout, refreshToken, regisgter, resetPassword, sendOtp, verifyOtp } from "../controllers/auth.controller.js";
+import { changePassword, forgotPassword, getProfile, googleCallback, googleLoginRedirect, login, logout, refreshToken, regisgter, resetPassword, sendOtp, verifyOtp } from "../controllers/auth.controller.js";
 import { userPolicy } from "../middlewares/userPolicy.js";
 import { userAccess } from "../middlewares/userAccess.js";
 import { createUser, deleteUser, getListUser, getUserById, updateUser, updateUserType } from "../controllers/user.controller.js";
@@ -25,6 +25,9 @@ router.post('/auth/verify-otp', verifyOtp);
 router.post('/auth/send-otp', sendOtp);
 router.get('/auth/profile',userPolicy,getProfile);
 router.patch('/auth/change-password',userPolicy,changePassword)
+//login with google
+router.get('/auth/google',googleLoginRedirect);
+router.get('/auth/google/callback',googleCallback);
 
 //user
 router.get('/users',userPolicy,userAccess("user","listview"),getListUser) //list users
