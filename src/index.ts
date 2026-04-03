@@ -5,8 +5,11 @@ import router from './routes/routes.js';
 const app = express();
 import './models/index.js'
 import { pagination } from './middlewares/pagination.js';
+import cookieParser from 'cookie-parser';
 
 //middleware
+app.use(cookieParser());
+
 app.use(express.json());
 
 app.use(pagination);

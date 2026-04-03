@@ -12,6 +12,10 @@ import { Op } from "sequelize";
 import Session from "../models/Session.js";
 import crypto from "crypto";
 import { sendMail } from "../helper/sendmail.js";
+import { generateCodeVerifier, generateState, Google } from "arctic";
+
+import { UserService } from "../services/user.service.js";
+const userService = new UserService();
 
 export const regisgter = async (req: Request, res: Response) => {
   try {
@@ -535,5 +539,115 @@ export const changePassword = async(req:Request,res:Response) => {
   }catch(e){
     console.error(e);
     res.status(500).json({message:"internal server error !!"})
+  }
+}
+
+//Oauth implementation:
+const google = new Google(
+  env.GOOGLE_CLIENT_ID,
+  env.GOOGLE_CLIENT_SECRET,
+  "http://localhost:3300/api/v1/auth/google/callback"
+)
+
+export const googleLoginRedirect = async (req:Request, res:Response) => {  
+  // 1. Generate security strings
+  const state = generateState();
+  const codeVerifier = generateCodeVerifier();
+
+  const url = await google.createAuthorizationURL(state, codeVerifier, ["profile","email"]);
+
+  //store state and codeVerifier in cookies so callback can see them
+  res.cookie("google_oauth_state", state, { httpOnly: true, secure: false });
+  res.cookie("google_code_verifier",codeVerifier, { httpOnly: true, secure: false });
+
+  //redirect the user to google
+  return res.redirect(url.toString());
+};
+
+export const googleCallback = async (req:Request, res:Response) => {  
+  const code = req.query.code?.toString();
+  const state = req.query.state?.toString();
+
+  // Retrieve the stored strings from cookies
+  const storedState = req.cookies.google_oauth_state;
+  const storedCodeVerifier = req.cookies.google_code_verifier;
+
+  // Validation
+  if (!code || !state || !storedState || !storedCodeVerifier || state !== storedState) {
+    return res.status(400).send("Invalid state or missing parameters");
+  }
+
+  try{
+    //3. validate the code and get the access token
+    const tokens = await google.validateAuthorizationCode(code, storedCodeVerifier);
+
+    const tokenString = tokens.accessToken();
+
+    //4. Use the token to fetch user info from Google API
+    const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo",{
+      headers:{ Authorization: `Bearer ${tokenString}`}
+    });
+
+    const googleUser = await response.json();
+
+    // console.log("GOOGLE USER DATA:", googleUser);
+
+    const profile = {
+      id: googleUser.sub || googleUser.id, 
+      displayName: googleUser.name,
+      emails: [{ value: googleUser.email }]
+    }; 
+
+    if (!profile.id) {
+        throw new Error("Could not find a unique ID in Google response");
+    }
+
+    //5.Hand this over to your UserService
+    const user = await userService.handleOAuthLogin(profile, "google");
+
+    // Clear cookies after use
+    res.clearCookie("google_oauth_state");
+    res.clearCookie("google_code_verifier");
+
+    //send the accesstoken and refresht token and pass it in the token
+    if(!user?.dataValues.id){
+      return res.send("user id not found !!");
+    }
+    const policies = await getUserPolicies(user?.dataValues.id);
+    const userData = {id:user?.dataValues.id,user_type:user?.dataValues.user_type,policies}
+
+    //token:
+    const accessToken  = jwt.sign(userData,env.JWT_SECRET,{expiresIn: "1h"});
+    const refreshToken  = jwt.sign({ id: user.dataValues.id }, env.REFRESH_SECRET, { expiresIn: "7d" });
+
+    //Store in Sessions Table
+    
+    // Delete old sessions first if you only want 1 active login
+    await Session.destroy({ where: { user_id: user.dataValues.id, type: ['access_token', 'refresh_token']  }});
+    
+    await Session.bulkCreate([
+      { 
+        user_id: user.dataValues.id, 
+        type: "access_token",
+        token: accessToken, 
+        expires_at: new Date(Date.now() + 60 * 60 * 1000) 
+      },
+      { 
+        user_id: user.dataValues.id, 
+        type: "refresh_token", 
+        token: refreshToken, 
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
+      }
+    ])
+
+    return res.status(200).json({
+      message: "Login Successful",
+      accessToken,
+      refreshToken
+    });
+  }catch(error){
+    console.log(error);
+    
+    return res.status(500).send("Authentication failed");
   }
 }
