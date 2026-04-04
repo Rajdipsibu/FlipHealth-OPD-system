@@ -11,6 +11,7 @@ import { createRole, deleteRole, getRoles, updateRole } from "../controllers/rol
 import { createAction, deleteAction, getActions, updateAction } from "../controllers/action.controller.js";
 import { validate } from "../middlewares/validate.js";
 import { createSchema, updateSchema, updateUserTypeSchema } from "../schema/user.schema.js";
+import { loginMFAChallenge, setupMFA, verifyAndEnableMFA } from "../controllers/mfa.controller.js";
 
 const router = express.Router();
 
@@ -28,6 +29,14 @@ router.patch('/auth/change-password',userPolicy,changePassword)
 //login with google
 router.get('/auth/google',googleLoginRedirect);
 router.get('/auth/google/callback',googleCallback);
+
+// Start MFA setup (Generates QR Code) - Must be logged in
+router.post('/auth/setup',userPolicy,setupMFA);
+// First-time verification to activate MFA - Must be logged in
+router.post('/auth/verify-enable',userPolicy, verifyAndEnableMFA)
+// The 2nd step of login (Verify OTP) - Public route with a temp token
+router.post('/auth/login-verify', loginMFAChallenge);
+
 
 //user
 router.get('/users',userPolicy,userAccess("user","listview"),getListUser) //list users
