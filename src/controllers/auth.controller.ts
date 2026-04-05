@@ -13,6 +13,9 @@ import { UserService } from "../services/user.service.js";
 import UserMfaConfig from "../models/UserMfaConfig.js";
 import { getUserPolicies } from "../helper/user_policy.js";
 import { user_token } from "../helper/user_token.js";
+import { sendResponse } from "../utils/response.js";
+import { HTTP_STATUS } from "../utils/httpStatus.js";
+import { MESSAGES } from "../utils/messages.js";
 const userService = new UserService();
 
 export const regisgter = async (req: Request, res: Response) => {
@@ -24,7 +27,8 @@ export const regisgter = async (req: Request, res: Response) => {
     //check the user already exist or not!
     const isExistUser = await User.findOne({ where: { email: email } });
     if (isExistUser)
-      return res.status(400).json({ message: "user already exist !!" });
+      // return res.status(400).json({ message: "user already exist !!" });
+      return sendResponse(res,HTTP_STATUS.BAD_REQUEST,MESSAGES.USER.ALREADY_EXISTS);
 
     //bcrypt password
     const saltRound = 10;

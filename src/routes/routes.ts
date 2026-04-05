@@ -11,12 +11,12 @@ import { createRole, deleteRole, getRoles, updateRole } from "../controllers/rol
 import { createAction, deleteAction, getActions, updateAction } from "../controllers/action.controller.js";
 import { validate } from "../middlewares/validate.js";
 import { createSchema, updateSchema, updateUserTypeSchema } from "../schema/user.schema.js";
-import { loginMFAChallenge, setupMFA, verifyAndEnableMFA } from "../controllers/mfa.controller.js";
+import { loginMFAChallenge, resetMFA, setupMFA, verifyAndEnableMFA } from "../controllers/mfa.controller.js";
 
 const router = express.Router();
 
 //auth
-router.post('/auth/register',regisgter);
+router.post('/auth/register',validate(createSchema),regisgter);
 router.post('/auth/login',login)
 router.post('/auth/logout',userPolicy,logout)
 router.post('/auth/refresh-token',refreshToken)
@@ -30,12 +30,14 @@ router.patch('/auth/change-password',userPolicy,changePassword)
 router.get('/auth/google',googleLoginRedirect);
 router.get('/auth/google/callback',googleCallback);
 
-// Start MFA setup (Generates QR Code) - Must be logged in
+// MFA setup
 router.post('/auth/setup',userPolicy,setupMFA);
-// First-time verification to activate MFA - Must be logged in
+// activate MFA
 router.post('/auth/verify-enable',userPolicy, verifyAndEnableMFA)
-// The 2nd step of login (Verify OTP) - Public route with a temp token
+// MFA login
 router.post('/auth/login-verify', loginMFAChallenge);
+// reset MFA
+router.post('/auth/reset-mfa',userPolicy,resetMFA)
 
 
 //user
