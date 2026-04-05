@@ -2,12 +2,7 @@ import type { Request, Response } from "express";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import env from "../config/env.js";
-import UserRole from "../models/UserRole.js";
-import PermissionRole from "../models/PermissionRole.js";
 import bcrypt from "bcrypt";
-import ModuleAction from "../models/ModuleAction.js";
-import Module from "../models/Module.js";
-import Action from "../models/Action.js";
 import { Op } from "sequelize";
 import Session from "../models/Session.js";
 import crypto from "crypto";
@@ -15,6 +10,12 @@ import { sendMail } from "../helper/sendmail.js";
 import { generateCodeVerifier, generateState, Google } from "arctic";
 
 import { UserService } from "../services/user.service.js";
+import UserMfaConfig from "../models/UserMfaConfig.js";
+import { getUserPolicies } from "../helper/user_policy.js";
+import { user_token } from "../helper/user_token.js";
+import { sendResponse } from "../utils/response.js";
+import { HTTP_STATUS } from "../utils/httpStatus.js";
+import { MESSAGES } from "../utils/messages.js";
 const userService = new UserService();
 
 export const regisgter = async (req: Request, res: Response) => {
@@ -26,7 +27,8 @@ export const regisgter = async (req: Request, res: Response) => {
     //check the user already exist or not!
     const isExistUser = await User.findOne({ where: { email: email } });
     if (isExistUser)
-      return res.status(400).json({ message: "user already exist !!" });
+      // return res.status(400).json({ message: "user already exist !!" });
+      return sendResponse(res,HTTP_STATUS.BAD_REQUEST,MESSAGES.USER.ALREADY_EXISTS);
 
     //bcrypt password
     const saltRound = 10;
@@ -65,44 +67,40 @@ export const login = async (req: Request, res: Response) => {
     if (!isMatch)
       return res.status(400).json({ message: "invalid credential !!" });
 
+    //Check if MFA is active for this user:
+    const mfaConfig = await UserMfaConfig.findOne({
+      where: {user_id:user.dataValues.id, is_active: true}
+    });
+    if(mfaConfig){
+      const mfaToken = jwt.sign(
+        { id: user.dataValues.id, mfa_pending: true }, 
+        env.JWT_SECRET, 
+        { expiresIn: '5m' }
+      );
+
+      return res.status(200).json({
+        status: "MFA_REQUIRED",
+        mfaToken: mfaToken,
+        message: "Please enter the 6-digit code from your app"
+      });
+    }
+
+    //otherwise: 
     const policies = await getUserPolicies(user.dataValues.id);
     
     const userData = {id: user.dataValues.id,user_type: user.dataValues.user_type,policies}
-
-    //token:
-    const accessToken  = jwt.sign(userData,env.JWT_SECRET,{expiresIn: "1h"});
-    const refreshToken  = jwt.sign({ id: user.dataValues.id }, env.REFRESH_SECRET, { expiresIn: "7d" });
-
-    //Store in Sessions Table
-    
-    // Delete old sessions first if you only want 1 active login
-    await Session.destroy({ where: { user_id: user.dataValues.id, type: ['access_token', 'refresh_token']  }});
-    
-    await Session.bulkCreate([
-      { 
-        user_id: user.dataValues.id, 
-        type: "access_token",
-        token: accessToken, 
-        expires_at: new Date(Date.now() + 60 * 60 * 1000) 
-      },
-      { 
-        user_id: user.dataValues.id, 
-        type: "refresh_token", 
-        token: refreshToken, 
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
-      }
-    ])
+    const result = await user_token(userData);
 
     //send the token into the response:
     return res.status(200).json({
       message: "Login Successful",
-      accessToken,
-      refreshToken
+      accessToken:result.accessToken,
+      refreshToken:result.refreshToken
     })
 
   } catch (error: any) {
     console.error(error);
-    res.status(400).json({ message: "internal server error !!!" });
+    res.status(500).json({ message: "internal server error !!!" });
   }
 };
 
@@ -173,57 +171,6 @@ export const refreshToken = async (req: Request, res: Response) => {
     return res.status(200).json({ accessToken: newAccessToken });
   }catch (error) {
     return res.status(403).json({ message: "Session expired, please login again" });
-  }
-}
-
-const getUserPolicies = async(userId:number)=>{
-  try{    
-    //fetch the all role of that particular user:
-    const userRoles = await UserRole.findAll({
-      where:{user_id:userId}
-    });
-    //fetch roleIds:
-    const roleIds = userRoles.map((user_role)=>user_role.dataValues.role_id);
-    
-    //fetch the permission according to roleIds:
-    const permissionRoles = await PermissionRole.findAll({
-      where:{
-        role_id:{[Op.in]:roleIds}
-      },
-      include:[
-        {
-          model:ModuleAction,
-          include:[
-            {model:Module},
-            {model:Action}
-          ]
-        }
-      ]
-    });
-    //Create Flat Dot Notation Array
-    const policies:string[] = [];
-
-    const permissionData = permissionRoles.map(p => p.toJSON());
-
-    permissionData.forEach(pd => {
-      const module_action = pd.ModuleAction;
-      const module_code = module_action?.Module?.code;
-      const action_code = module_action?.Action?.code;
-
-      if (module_code && action_code) {
-        const policyString = `${module_code}.${action_code}`;
-        
-        // Ensure no duplicates
-        if (!policies.includes(policyString)) {
-          policies.push(policyString);
-        }
-      }
-    })
-    
-    return policies.sort();
-  }catch(err){
-    console.error("Policy Flattening Error:", err);
-    return [];
   }
 }
 
@@ -617,33 +564,12 @@ export const googleCallback = async (req:Request, res:Response) => {
     const userData = {id:user?.dataValues.id,user_type:user?.dataValues.user_type,policies}
 
     //token:
-    const accessToken  = jwt.sign(userData,env.JWT_SECRET,{expiresIn: "1h"});
-    const refreshToken  = jwt.sign({ id: user.dataValues.id }, env.REFRESH_SECRET, { expiresIn: "7d" });
-
-    //Store in Sessions Table
+    const result = await user_token(userData);
     
-    // Delete old sessions first if you only want 1 active login
-    await Session.destroy({ where: { user_id: user.dataValues.id, type: ['access_token', 'refresh_token']  }});
-    
-    await Session.bulkCreate([
-      { 
-        user_id: user.dataValues.id, 
-        type: "access_token",
-        token: accessToken, 
-        expires_at: new Date(Date.now() + 60 * 60 * 1000) 
-      },
-      { 
-        user_id: user.dataValues.id, 
-        type: "refresh_token", 
-        token: refreshToken, 
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
-      }
-    ])
-
     return res.status(200).json({
       message: "Login Successful",
-      accessToken,
-      refreshToken
+      accessToken:result.accessToken,
+      refreshToken:result.refreshToken
     });
   }catch(error){
     console.log(error);

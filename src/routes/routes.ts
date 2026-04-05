@@ -11,11 +11,12 @@ import { createRole, deleteRole, getRoles, updateRole } from "../controllers/rol
 import { createAction, deleteAction, getActions, updateAction } from "../controllers/action.controller.js";
 import { validate } from "../middlewares/validate.js";
 import { createSchema, updateSchema, updateUserTypeSchema } from "../schema/user.schema.js";
+import { loginMFAChallenge, resetMFA, setupMFA, verifyAndEnableMFA } from "../controllers/mfa.controller.js";
 
 const router = express.Router();
 
 //auth
-router.post('/auth/register',regisgter);
+router.post('/auth/register',validate(createSchema),regisgter);
 router.post('/auth/login',login)
 router.post('/auth/logout',userPolicy,logout)
 router.post('/auth/refresh-token',refreshToken)
@@ -28,6 +29,16 @@ router.patch('/auth/change-password',userPolicy,changePassword)
 //login with google
 router.get('/auth/google',googleLoginRedirect);
 router.get('/auth/google/callback',googleCallback);
+
+// MFA setup
+router.post('/auth/setup',userPolicy,setupMFA);
+// activate MFA
+router.post('/auth/verify-enable',userPolicy, verifyAndEnableMFA)
+// MFA login
+router.post('/auth/login-verify', loginMFAChallenge);
+// reset MFA
+router.post('/auth/reset-mfa',userPolicy,resetMFA)
+
 
 //user
 router.get('/users',userPolicy,userAccess("user","listview"),getListUser) //list users
