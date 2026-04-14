@@ -5,11 +5,11 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
-
 const KEY = crypto
   .createHash('sha256')
   .update(String(env.ENCRYPTION_KEY))
   .digest();
+
 
 export const encrypt = (text: string): string => {
   const iv = crypto.randomBytes(IV_LENGTH);
@@ -43,3 +43,39 @@ export const decrypt = (hash: string): string => {
 
   return decrypted;
 };
+
+
+export const generateSignature = ( clientId: string, nonce: string, timestamp: string, body: any, secret: string )=>{
+  //1. Hash request body
+  const bodyHash = crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex');
+  // Step 2 & 3: Create signing string and Generate HMAC
+  const signingString = `${clientId}|${nonce}|${timestamp}|${bodyHash}`;
+  return crypto.createHmac('sha256',secret).update(signingString).digest('base64');
+}
+
+export const verifyHmacSignature = (
+  clientId: string,
+  nonce: string,
+  timestamp: string,
+  body: any,
+  signature: string,
+  secret: string
+): boolean =>{
+  //1: Hash request body
+  const bodyHash = crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex');
+
+  //2: create signing string
+  const signingString = `${clientId}|${nonce}|${timestamp}|${bodyHash}`;
+
+  //3: generate expected signature
+  const expectedSignature = crypto
+    .createHmac('sha256',secret)
+    .update(signingString)
+    .digest('base64');
+
+  //4: constant time comparison to prevent timing attacks
+  return crypto.timingSafeEqual(
+    Buffer.from(signature, 'base64'),
+    Buffer.from(expectedSignature,'base64')
+  );
+}

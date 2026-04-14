@@ -16,7 +16,22 @@ import { user_token } from "../helper/user_token.js";
 import { sendResponse } from "../utils/response.js";
 import { HTTP_STATUS } from "../utils/httpStatus.js";
 import { MESSAGES } from "../utils/messages.js";
+import { v4 as uuidv4 } from 'uuid';
+import redisClient from "../config/redis.js";
 const userService = new UserService();
+import fs from 'fs';
+import path from 'path';
+
+
+const privateKey = fs.readFileSync(path.join(process.cwd(), 'private.pem'), 'utf8');
+const publicKey = fs.readFileSync(path.join(process.cwd(), 'public.pem'), 'utf8');
+
+//Oauth implementation:
+const google = new Google(
+  env.GOOGLE_CLIENT_ID,
+  env.GOOGLE_CLIENT_SECRET,
+  "http://localhost:3300/api/v1/auth/google/callback"
+)
 
 export const regisgter = async (req: Request, res: Response) => {
   try {
@@ -489,13 +504,6 @@ export const changePassword = async(req:Request,res:Response) => {
   }
 }
 
-//Oauth implementation:
-const google = new Google(
-  env.GOOGLE_CLIENT_ID,
-  env.GOOGLE_CLIENT_SECRET,
-  "http://localhost:3300/api/v1/auth/google/callback"
-)
-
 export const googleLoginRedirect = async (req:Request, res:Response) => {  
   // 1. Generate security strings
   const state = generateState();
@@ -575,5 +583,75 @@ export const googleCallback = async (req:Request, res:Response) => {
     console.log(error);
     
     return res.status(500).send("Authentication failed");
+  }
+}
+
+export const requestSSOToken = async(req: Request, res: Response) => {
+  const { user_id, project_id } = req.body;
+  // const jti = uuidv4(); //unique token id
+
+  const payload = {
+    iss: "iam.fliphealth.com",
+    sub: user_id,
+    project_id: project_id,
+    aud: "web_customer_app",
+    jti: crypto.randomBytes(16).toString('hex'),
+  };
+
+  const ssoToken = jwt.sign(payload, privateKey,{
+    algorithm: 'RS256',
+    expiresIn: '60s'
+  });
+
+  // Store JTI in Redis for Single-Use Protection
+  await redisClient.set(`sso:jti:${payload.jti}`, '1', {EX: 60});
+
+  return res.json({
+    token_type:"sso_token",
+    token:ssoToken,
+    redirect_url: `https://web.fliphealth.com/sso-login?token=${ssoToken}`
+  });
+};
+
+export const tokenExchange = async (req: Request, res: Response) =>{
+  const { token } = req.body;
+
+  try{
+    // 1. Verify RSA Signature & Claims
+    const decoded: any = await jwt.verify(token, publicKey, {
+      algorithms: ['RS256'],
+      issuer:"iam.fliphealth.com",
+      audience:"web_customer_app"
+    })
+    if(!decoded){
+      return res.json({message:"invalid decoded"});
+    }
+
+    // 2. Single-Use Check (The GETDEL logic)
+    const jtiKey = `sso:jti:${decoded.jti}`;
+    const result = await redisClient.getDel(jtiKey);
+
+    if (!result) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ 
+        message: "SSO Token has already been used or has expired." 
+      });
+    }
+    // 3. Generate Production Tokens
+    // At this point, the user is verified. Use your existing user_token logic.
+    const user = await User.findByPk(decoded.sub);
+    if (!user) return res.status(HTTP_STATUS.NOT_FOUND).json({ message: "User not found" });
+
+    // 3. SUCCESS: Issue Real Access/Refresh Tokens
+    const policies = await getUserPolicies(user.dataValues.id);
+    const userData = { id: user.dataValues.id, user_type: user.dataValues.user_type, policies };
+    const tokens = await user_token(userData);
+    
+    return res.json({
+      success:true,
+      message:"access token and refresh token!!",
+      ...tokens
+    });
+  }catch(error){
+    return sendResponse(res,HTTP_STATUS.UNAUTHORIZED,"Invalid SSO Token");
   }
 }

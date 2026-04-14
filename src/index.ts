@@ -6,6 +6,7 @@ const app = express();
 import './models/index.js'
 import { pagination } from './middlewares/pagination.js';
 import cookieParser from 'cookie-parser';
+import { connectRedis } from './config/redis.js';
 
 //middleware
 app.use(cookieParser());
@@ -21,6 +22,7 @@ app.use('/api/v1',router);
 const PORT = env.PORT;
 app.listen(PORT,async()=>{
   await connectDB();
+  await connectRedis();// Ensure Redis is connected first
   console.log(`app is running on http://localhost:${PORT}`);
   
 })

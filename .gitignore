@@ -2,3 +2,5 @@
 .sequelizerc
 node_modules/
 src/config/env.ts
+private.pem
+public.pem

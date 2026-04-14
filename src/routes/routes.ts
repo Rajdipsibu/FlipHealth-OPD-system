@@ -1,5 +1,5 @@
 import express from "express";
-import { changePassword, forgotPassword, getProfile, googleCallback, googleLoginRedirect, login, logout, refreshToken, regisgter, resetPassword, sendOtp, verifyOtp } from "../controllers/auth.controller.js";
+import { changePassword, forgotPassword, getProfile, googleCallback, googleLoginRedirect, login, logout, refreshToken, regisgter, requestSSOToken, resetPassword, sendOtp, tokenExchange, verifyOtp } from "../controllers/auth.controller.js";
 import { userPolicy } from "../middlewares/userPolicy.js";
 import { userAccess } from "../middlewares/userAccess.js";
 import { createUser, deleteUser, getListUser, getUserById, updateUser, updateUserType } from "../controllers/user.controller.js";
@@ -12,6 +12,7 @@ import { createAction, deleteAction, getActions, updateAction } from "../control
 import { validate } from "../middlewares/validate.js";
 import { createSchema, updateSchema, updateUserTypeSchema } from "../schema/user.schema.js";
 import { loginMFAChallenge, resetMFA, setupMFA, verifyAndEnableMFA } from "../controllers/mfa.controller.js";
+import { iamSecurityMiddleware } from "../middlewares/iamSecurity.middleware.js";
 
 const router = express.Router();
 
@@ -29,6 +30,9 @@ router.patch('/auth/change-password',userPolicy,changePassword)
 //login with google
 router.get('/auth/google',googleLoginRedirect);
 router.get('/auth/google/callback',googleCallback);
+//SSO
+router.post('/auth/sso/request-token',iamSecurityMiddleware,requestSSOToken);
+router.post('/auth/sso/token-exchange',tokenExchange)
 
 // MFA setup
 router.post('/auth/setup',userPolicy,setupMFA);
